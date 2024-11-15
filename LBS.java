@@ -148,6 +148,17 @@ public class Main {
     
     static int[] queue_array = new int[20];
     
+    /**
+     * 2D matrix representing the library structure:
+     * - First dimension [10]: Represents shelves (0-9), determined by book ID % 10
+     * - Second dimension [5]: Represents subject racks (0-4):
+     *   0: Mathematics
+     *   1: Computer Science
+     *   2: Physics
+     *   3: Others
+     *   4: Reserved/Misc
+     * Each cell contains a BST of books organized by their IDs
+     **/
     static BST[][] rack = new BST[10][5];
     
     static User start = null;
@@ -163,7 +174,7 @@ public class Main {
     public static int generateBookID(String str) {
         queue.reset();
         int value = 0;
-
+ 
         // Check each character in str
         for (int i = 0; i < str.length(); ++i) {
             // If str[i] is a space
@@ -206,7 +217,7 @@ public class Main {
         return (ch >= 'A' && ch <= 'Z') ? ch - 'A' + 1 : 0;
     }
 
-    public static BST searchBST(BST root, int id) {
+    public static BST searchBST(BST root, int id) {w4rty
         while (root != null) {
             if (root.id > id) {
                 root = root.left;
@@ -286,17 +297,16 @@ public class Main {
     }
 
     public static Book searchBook(BST bst, String name, String authorName) {
-    int id = generateBookID(name);
-    Book book = bst.next;
+        int id = generateBookID(name);
+        Book book = bst.next;
 
-    while (book != null) {
-        if (book.name.equals(name) && book.author.equals(authorName)) {
-            return book;
+        while (book != null) {
+            if (book.name.equals(name) && book.author.equals(authorName)) {
+                return book;
+            }
+            book = book.next;
         }
-        book = book.next;
-    }
-
-    return null;
+        return null;
     }
 
     public static boolean searchingSearchBook(BST bst, String name, int rack, int shelve) {
@@ -315,55 +325,71 @@ public class Main {
 
         return found;
     }
-
+    /**
+     * Deletes a book from the library system based on book name and author
+     * The function handles both reducing quantity and complete removal
+     * Uses a linked list structure where books with same ID are chained together
+     * 
+     * @param name The name of the book to delete
+     * @param authorName The author of the book to delete
+     * @return true if book was found and deleted, false otherwise
+     */
     public static boolean deleteBook(String name, String authorName) {
-    int id = generateBookID(name);
+        // Generate ID from book name for finding the correct shelf/rack
+        int id = generateBookID(name);
 
-    // For each rack
-    for (int c = 0; c < 5; ++c) {
-        // For shelve
-        int shelve = id % 10;
+        // Check each rack (0-4 representing different subjects like Math, CS etc)
+        for (int c = 0; c < 5; ++c) {
+            // Calculate shelf number using modulo of ID
+            int shelve = id % 10;
 
-        // Search BST
-        BST bst = searchBST(rack[shelve][c], id);
+            // Find the BST node containing books with this ID
+            BST bst = searchBST(rack[shelve][c], id);
 
-        // If BST found
-        if (bst != null) {
-            // Searching book
-            if (searchBookCheck(bst, name, authorName)) {
-                Book book = searchBookMain(bst, name, authorName);
-                Book prevBook = searchPreviousBook(bst, name, authorName);
-                if (book.name.equals(name) && book.author.equals(authorName)) {
-                    if (book.amount > 1) {
-                        book.amount--;
-                    } else {
-                        if (book.next == null) {
-                            bst.next = null;
+            if (bst != null) {
+                // Verify book exists before attempting deletion
+                if (searchBookCheck(bst, name, authorName)) {
+                    Book book = searchBookMain(bst, name, authorName);
+                    // Get previous book in linked list to handle list reconnection
+                    Book prevBook = searchPreviousBook(bst, name, authorName);
+
+                    // Case 1: Book is first in the linked list
+                    if (book.name.equals(name) && book.author.equals(authorName)) {
+                        if (book.amount > 1) {
+                            // Just decrease quantity if multiple copies exist
+                            book.amount--;
                         } else {
-                            bst.next = book.next;
+                            // Remove book node completely
+                            if (book.next == null) {
+                                bst.next = null; // Was only book
+                            } else {
+                                bst.next = book.next; // Skip over deleted book
+                            }
                         }
+                        return true;
                     }
-                    return true;
-                } else if (prevBook != null) {
-                    Book delBook = book.next;
-                    if (book.next.name.equals(name) && book.next.author.equals(authorName)) {
-                        // If amount is greater than 1
-                        if (book.next.amount > 1) {
-                            book.next.amount--;
+                    // Case 2: Book is somewhere else in the linked list
+                    else if (prevBook != null) {
+                        Book delBook = book.next;
+                        if (book.next.name.equals(name) && book.next.author.equals(authorName)) {
+                            if (book.next.amount > 1) {
+                                // Decrease quantity if multiple copies
+                                book.next.amount--;
+                                return true;
+                            }
+                            // Remove book node by updating links
+                            if (book.next.next != null) {
+                                book.next = book.next.next;
+                            } else {
+                                book.next = null;
+                            }
+                            deleteBookNode(delBook);
                             return true;
                         }
-                        if (book.next.next != null) {
-                            book.next = book.next.next;
-                        } else {
-                            book.next = null;
-                        }
-                        deleteBookNode(delBook);
-                        return true;
                     }
                 }
             }
         }
-    }
 
         return false;
     }
@@ -433,7 +459,7 @@ public class Main {
         return false;
     }
 
-        public static void generateLibraryData() {
+    public static void generateLibraryData() {
         BufferedReader inFile = null;
 
         // File path (replace with actual path)
@@ -512,7 +538,7 @@ public class Main {
                     book = searchBook(bst, bookName, authorName);
                     if (book != null) {
                         tempBook = new Book(bookName, authorName, id, i);
-                        tempBook.author = book.author;
+                        tempBook.author = authorName;
 
                         // Deleting the book from the library
                         deleteBook(bookName, authorName);
@@ -566,28 +592,24 @@ public class Main {
             // Searching for book
             Book book = user.book;
 
-            // If book exists
+            // If book exists and matches the name
             if (book != null && book.name.equals(bookName)) {
-                // If there is only one book with the user
-                if (user.book == book) {
-                    addBook(book.rack, bookName, book.author);
-                    user.book = null;
-                    // Assuming Book class handles deleting itself, if needed
-                    book = null;
+                addBook(book.rack, bookName, book.author);
+                user.book = null;
+                book = null;
 
-                    // If the user is the root
-                    if (user == start) {
-                        if (start.next != null) {
-                            start = start.next;
-                        } else {
-                            start = null;
-                        }
+                // If the user is the root
+                if (user == start) {
+                    if (start.next != null) {
+                        start = start.next;
                     } else {
-                        prevUser.next = user.next;
-                        user = null;
+                        start = null;
                     }
-                    return true;
+                } else {
+                    prevUser.next = user.next;
+                    user = null;
                 }
+                return true;
             } else {
                 System.out.println("\nBook not Found");
             }
@@ -622,7 +644,7 @@ public class Main {
         System.out.println("\nLibrary Management System\n\n");
 
         while (true) {
-            System.out.println("\n\n\n++++++++++     M E N U     ++++++++++");
+            System.out.println("\n\n\n++++++++++M E N U++++++++++");
             System.out.println("0. Exit");
             System.out.println("1. Display All Books");
             System.out.println("2. Insert a Book");
